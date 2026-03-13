@@ -114,8 +114,26 @@ def deletar(id):
     conn.commit()
     conn.close()
     return redirect(url_for('estoque_aba'))
+@app.route('/editar/<int:id>', methods=['GET', 'POST'])
+def editar(id):
+    conn = get_db_connection()
+    produto = conn.execute('SELECT * FROM produtos WHERE id = ?', (id,)).fetchone()
 
+    if request.method == 'POST':
+        f = request.form
+        conn.execute('''UPDATE produtos SET codigo=?, nome=?, cor=?, preco=?, p=?, m=?, g=?, gg=? 
+                        WHERE id=?''',
+                     (f.get('codigo'), f.get('nome'), f.get('cor'), float(f.get('preco')), 
+                      int(f.get('P')), int(f.get('M')), int(f.get('G')), int(f.get('GG')), id))
+        conn.commit()
+        conn.close()
+        return redirect(url_for('estoque_aba'))
+    
+    conn.close()
+    return render_template('editar_produto.html', p=produto)
+    
 # CONFIGURAÇÃO CRÍTICA PARA O RENDER
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 10000))
     app.run(host='0.0.0.0', port=port)
+
