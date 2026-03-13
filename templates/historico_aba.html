@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>VIBE - HISTÓRICO DE VENDAS</title>
+    <style>
+        body { font-family: sans-serif; background: #eee; padding: 20px; }
+        .container { background: white; padding: 20px; border-radius: 8px; }
+        .busca { width: 100%; padding: 15px; margin-bottom: 20px; font-size: 16px; border-radius: 5px; border: 1px solid #ccc; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
+        tr:nth-child(even) { background: #fafafa; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>📜 HISTÓRICO DE VENDAS</h2>
+        <input type="text" id="filtro" class="busca" placeholder="Pesquisar por produto, data ou forma de pagamento..." onkeyup="filtrarHistorico()">
+        
+        <table id="tabela-historico">
+            <thead>
+                <tr>
+                    <th>Data/Hora</th>
+                    <th>Itens Vendidos</th>
+                    <th>Pagamento</th>
+                    <th>Valor Total</th>
+                    <th>Cupom</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for v in vendas %}
+                <tr class="venda-row">
+                    <td>{{ v.data }}</td>
+                    <td>{{ v.detalhes }}</td>
+                    <td>{{ v.forma_pagamento }}</td>
+                    <td><b>R$ {{ "%.2f"|format(v.valor_pago) }}</b></td>
+                    <td><button onclick="alert('Imprimindo via sistema térmico...')">REIMPRIMIR</button></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        function filtrarHistorico() {
+            let input = document.getElementById('filtro').value.toLowerCase();
+            let rows = document.querySelectorAll('.venda-row');
+            rows.forEach(row => {
+                row.style.display = row.innerText.toLowerCase().includes(input) ? '' : 'none';
+            });
+        }
+    </script>
+</body>
+</html>
