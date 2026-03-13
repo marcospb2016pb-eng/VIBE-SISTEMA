@@ -1,5 +1,6 @@
 import os
 import sqlite3
+from datetime import datetime
 from flask import Flask, render_template, request, redirect, url_for, session, jsonify
 
 app = Flask(__name__)
@@ -69,6 +70,8 @@ def historico_aba():
     conn.close()
     return render_template('historico_aba.html', vendas=vendas)
 
+# --- ROTAS DE OPERAÇÃO DE ESTOQUE ---
+
 @app.route('/remover_estoque', methods=['POST'])
 def remover_estoque():
     data = request.json
@@ -87,6 +90,8 @@ def devolver_estoque():
     conn.close()
     return jsonify(status="ok")
 
+# --- ROTAS DE VENDA E IMPRESSÃO ---
+
 @app.route('/finalizar_venda', methods=['POST'])
 def finalizar_venda():
     data = request.json
@@ -97,12 +102,30 @@ def finalizar_venda():
     conn.close()
     return jsonify(status="ok")
 
+@app.route('/gerar_cupom_print')
+def gerar_cupom_print():
+    """Rota que preenche o arquivo cupom.html para a impressora térmica"""
+    itens = request.args.get('itens', '')
+    total = request.args.get('total', '0.00')
+    metodo = request.args.get('metodo', '')
+    data_hora = datetime.now().strftime('%d/%m/%Y %H:%M:%S')
+    
+    return render_template('cupom.html', itens=itens, total=total, metodo=metodo, data=data_hora)
+
+@app.route('/cupom_vazia')
+def cupom_vazia():
+    """Página em branco inicial para o iframe de impressão"""
+    return "<html><body></body></html>"
+
+# --- ROTAS DE GESTÃO DE PRODUTOS ---
+
 @app.route('/cadastrar', methods=['POST'])
 def cadastrar():
     f = request.form
     conn = get_db_connection()
     conn.execute('INSERT INTO produtos (codigo, nome, cor, preco, p, m, g, gg) VALUES (?,?,?,?,?,?,?,?)',
-                 (f.get('codigo'), f.get('nome'), f.get('cor'), float(f.get('preco',0)), int(f.get('P',0)), int(f.get('M',0)), int(f.get('G',0)), int(f.get('GG',0))))
+                 (f.get('codigo'), f.get('nome'), f.get('cor'), float(f.get('preco',0)), 
+                  int(f.get('P',0)), int(f.get('M',0)), int(f.get('G',0)), int(f.get('GG',0))))
     conn.commit()
     conn.close()
     return redirect(url_for('estoque_aba'))
@@ -114,6 +137,7 @@ def deletar(id):
     conn.commit()
     conn.close()
     return redirect(url_for('estoque_aba'))
+
 @app.route('/editar/<int:id>', methods=['GET', 'POST'])
 def editar(id):
     conn = get_db_connection()
@@ -136,4 +160,3 @@ def editar(id):
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 10000))
     app.run(host='0.0.0.0', port=port)
-
