@@ -9,12 +9,22 @@
         th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
         th { background: #333; color: white; }
         input { padding: 8px; margin: 5px; border: 1px solid #ccc; border-radius: 4px; }
-        .btn-add { background: #27ae60; color: white; border: none; padding: 10px 20px; cursor: pointer; }
+        .btn-add { background: #27ae60; color: white; border: none; padding: 10px 20px; cursor: pointer; border-radius: 4px; font-weight: bold; }
+        .btn-add:hover { background: #219150; }
+        
+        /* Estilos para os botões de ação */
+        .btn-editar { color: #2980b9; text-decoration: none; font-weight: bold; margin-right: 15px; }
+        .btn-excluir { color: #c0392b; text-decoration: none; font-weight: bold; }
+        .btn-editar:hover, .btn-excluir:hover { text-decoration: underline; }
     </style>
 </head>
 <body>
     <div class="container">
-        <h2>📦 CADASTRO DE PRODUTOS</h2>
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h2>📦 CADASTRO DE PRODUTOS</h2>
+            <a href="/" style="text-decoration: none; color: #666;">⬅ Voltar ao Menu</a>
+        </div>
+
         <form action="/cadastrar" method="POST">
             <input type="text" name="codigo" placeholder="Código" required>
             <input type="text" name="nome" placeholder="Nome do Produto" required>
@@ -32,21 +42,35 @@
 
         <h2>LISTA DE PRODUTOS</h2>
         <table>
-            <tr>
-                <th>Cód</th><th>Nome</th><th>Cor</th><th>Preço</th><th>Estoque (P|M|G|GG)</th><th>Ações</th>
-            </tr>
-            {% for p in produtos %}
-            <tr>
-                <td>{{ p.codigo }}</td>
-                <td>{{ p.nome }}</td>
-                <td>{{ p.cor }}</td>
-                <td>R$ {{ p.preco }}</td>
-                <td>{{ p.p }} | {{ p.m }} | {{ p.g }} | {{ p.gg }}</td>
-                <td>
-                    <a href="/deletar/{{ p.id }}" style="color: red; text-decoration: none;" onclick="return confirm('Excluir produto?')">Excluir</a>
-                </td>
-            </tr>
-            {% endfor %}
+            <thead>
+                <tr>
+                    <th>Cód</th>
+                    <th>Nome</th>
+                    <th>Cor</th>
+                    <th>Preço</th>
+                    <th>Estoque (P|M|G|GG)</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for p in produtos %}
+                <tr>
+                    <td>{{ p.codigo }}</td>
+                    <td>{{ p.nome }}</td>
+                    <td>{{ p.cor }}</td>
+                    <td>R$ {{ "%.2f"|format(p.preco) }}</td>
+                    <td>{{ p.p }} | {{ p.m }} | {{ p.g }} | {{ p.gg }}</td>
+                    <td>
+                        <a href="/editar/{{ p.id }}" class="btn-editar">✏️ Editar</a>
+                        
+                        <a href="/deletar/{{ p.id }}" class="btn-excluir" 
+                           onclick="return confirm('Tem certeza que deseja excluir o produto {{ p.nome }}?')">
+                           🗑️ Excluir
+                        </a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
         </table>
     </div>
 </body>
