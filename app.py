@@ -82,6 +82,6 @@ def deletar(id):
     return redirect(url_for('estoque'))
 
 if __name__ == '__main__':
-    # Configuração vital para o Render ler a porta corretamente
+    # O Render exige que o host seja 0.0.0.0
     port = int(os.environ.get("PORT", 10000))
     app.run(host='0.0.0.0', port=port)
