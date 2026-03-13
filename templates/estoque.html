@@ -1,53 +1,86 @@
 <!DOCTYPE html>
-<html lang="pt">
+<html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>Cadastro de Estoque</title>
+    <title>VIBE SISTEMA - Gestão Total</title>
     <style>
-        body { font-family: Arial, sans-serif; margin: 20px; }
-        table { border-collapse: collapse; width: 100%; margin-top: 20px; }
-        th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
-        .form-group { margin-bottom: 10px; }
+        body { font-family: Arial, sans-serif; background: #f0f2f5; margin: 20px; }
+        .card { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; background: white; }
+        th, td { border: 1px solid #ddd; padding: 12px; text-align: center; }
+        th { background: #2c3e50; color: white; }
+        .btn { padding: 8px 15px; border: none; border-radius: 5px; cursor: pointer; text-decoration: none; color: white; }
+        .btn-add { background: #27ae60; }
+        .btn-edit { background: #2980b9; font-size: 12px; }
+        .btn-del { background: #c0392b; font-size: 12px; }
+        .btn-venda { background: #f39c12; }
+        input[type="text"], input[type="number"] { padding: 8px; border: 1px solid #ddd; border-radius: 4px; }
     </style>
 </head>
 <body>
-    <h1>Cadastro de Estoque</h1>
-    <form action="/cadastrar" method="POST">
-        Cod: <input type="text" name="codigo" style="width: 50px;">
-        Nome: <input type="text" name="nome">
-        Preço: <input type="text" name="preco" style="width: 60px;">
-        P: <input type="number" name="P" style="width: 40px;">
-        M: <input type="number" name="M" style="width: 40px;">
-        G: <input type="number" name="G" style="width: 40px;">
-        GG: <input type="number" name="GG" style="width: 40px;">
-        <button type="submit">Add</button>
-    </form>
 
-    <table>
-        <thead>
+    <div class="card">
+        <h2>{{ 'EDITAR PRODUTO' if edit_item else 'NOVO CADASTRO' }}</h2>
+        <form action="{{ url_for('editar', id=edit_item.id) if edit_item else url_for('cadastrar') }}" method="POST">
+            <input type="text" name="codigo" placeholder="Cod" value="{{ edit_item.codigo if edit_item else '' }}" style="width: 80px;">
+            <input type="text" name="nome" placeholder="Nome do Produto" value="{{ edit_item.nome if edit_item else '' }}" required>
+            <input type="text" name="preco" placeholder="Preço" value="{{ edit_item.preco if edit_item else '' }}" style="width: 100px;">
+            P:<input type="number" name="P" value="{{ edit_item.p if edit_item else 0 }}" style="width: 50px;">
+            M:<input type="number" name="M" value="{{ edit_item.m if edit_item else 0 }}" style="width: 50px;">
+            G:<input type="number" name="G" value="{{ edit_item.g if edit_item else 0 }}" style="width: 50px;">
+            GG:<input type="number" name="GG" value="{{ edit_item.gg if edit_item else 0 }}" style="width: 50px;">
+            <button type="submit" class="btn btn-add">{{ 'SALVAR ALTERAÇÕES' if edit_item else 'ADICIONAR' }}</button>
+            {% if edit_item %}<a href="/estoque" style="margin-left: 10px;">Cancelar</a>{% endif %}
+        </form>
+    </div>
+
+    <div class="card">
+        <h2>ESTOQUE</h2>
+        <table>
             <tr>
-                <th>Cod</th>
-                <th>Nome</th>
-                <th>P|M|G|GG</th>
-                <th>Preço</th>
-                <th>Ações</th>
+                <th>Cod</th><th>Nome</th><th>P | M | G | GG</th><th>Preço</th><th>Realizar Venda</th><th>Ações</th>
             </tr>
-        </thead>
-        <tbody>
             {% for p in produtos %}
             <tr>
                 <td>{{ p.codigo }}</td>
                 <td>{{ p.nome }}</td>
-                <td>{{ p.p }}|{{ p.m }}|{{ p.g }}|{{ p.gg }}</td>
-                <td>{{ p.preco }}</td>
+                <td><strong>{{ p.p }}</strong> | <strong>{{ p.m }}</strong> | <strong>{{ p.g }}</strong> | <strong>{{ p.gg }}</strong></td>
+                <td>R$ {{ p.preco }}</td>
                 <td>
-                    <a href="/deletar/{{ p.id }}">Excluir</a>
+                    <form action="/vender" method="POST" style="display: flex; gap: 5px; justify-content: center;">
+                        <input type="hidden" name="produto_id" value="{{ p.id }}">
+                        <select name="tamanho">
+                            <option value="P">P</option><option value="M">M</option>
+                            <option value="G">G</option><option value="GG">GG</option>
+                        </select>
+                        <input type="number" name="qtd" value="1" min="1" style="width: 40px;">
+                        <button type="submit" class="btn btn-venda">Vender</button>
+                    </form>
+                </td>
+                <td>
+                    <a href="/pre-editar/{{ p.id }}" class="btn btn-edit">Editar</a>
+                    <a href="/deletar/{{ p.id }}" class="btn btn-del" onclick="return confirm('Excluir permanentemente?')">Excluir</a>
                 </td>
             </tr>
             {% endfor %}
-        </tbody>
-    </table>
-    <br>
-    <a href="/">Voltar</a>
+        </table>
+    </div>
+
+    <div class="card">
+        <h2>ÚLTIMAS 10 VENDAS</h2>
+        <table>
+            <tr><th>Produto</th><th>Tamanho</th><th>Quantidade</th><th>Total</th><th>Data</th></tr>
+            {% for v in vendas %}
+            <tr>
+                <td>{{ v.nome }}</td>
+                <td>{{ v.tamanho }}</td>
+                <td>{{ v.quantidade }}</td>
+                <td>R$ {{ v.valor_total }}</td>
+                <td>{{ v.data }}</td>
+            </tr>
+            {% endfor %}
+        </table>
+    </div>
+
 </body>
 </html>
