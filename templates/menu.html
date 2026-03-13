@@ -3,14 +3,21 @@
 <head>
     <title>VIBE SISTEMA - MENU</title>
     <style>
-        body { font-family: Arial; text-align: center; background: #f4f4f4; padding-top: 50px; }
-        .menu-btn { display: block; width: 200px; margin: 10px auto; padding: 20px; background: #333; color: white; text-decoration: none; border-radius: 8px; }
-        .menu-btn:hover { background: #555; }
+        body { font-family: sans-serif; text-align: center; background: #1a1a1a; color: white; padding-top: 100px; }
+        .btn-menu { display: inline-block; width: 250px; padding: 30px; margin: 15px; border-radius: 15px; font-size: 20px; font-weight: bold; text-decoration: none; color: white; transition: 0.3s; }
+        .est { background: #2980b9; } .ven { background: #27ae60; } .his { background: #f39c12; }
+        .btn-menu:hover { transform: scale(1.1); filter: brightness(1.2); }
     </style>
 </head>
 <body>
-    <h1>SISTEMA VIBE</h1>
-    <a href="/estoque" class="menu-btn">📦 GERENCIAR ESTOQUE</a>
-    <p>O sistema de vendas agora está integrado dentro da aba de estoque para facilitar!</p>
+    <h1>SISTEMA VIBE - BEM VINDO, {{ user.upper() }}</h1>
+    <div style="display: flex; justify-content: center; flex-wrap: wrap;">
+        {% if user == 'admin' %}
+        <a href="/estoque_aba" target="_blank" class="btn-menu est">📦 ESTOQUE</a>
+        {% endif %}
+        <a href="/vendas_aba" target="_blank" class="btn-menu ven">🛒 VENDER (PDV)</a>
+        <a href="/historico_aba" target="_blank" class="btn-menu his">📜 HISTÓRICO</a>
+    </div>
+    <br><br><a href="/logout" style="color: grey;">Sair do Sistema</a>
 </body>
 </html>
