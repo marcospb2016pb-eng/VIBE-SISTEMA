@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>VIBE PDV - VENDAS</title>
+    <style>
+        body { font-family: sans-serif; display: flex; height: 100vh; margin: 0; }
+        .produtos { width: 60%; padding: 20px; background: #f4f4f4; overflow-y: auto; }
+        .carrinho { width: 40%; padding: 20px; background: #fff; border-left: 2px solid #ddd; }
+        .prod-card { background: white; padding: 10px; margin: 10px 0; border-radius: 5px; display: flex; justify-content: space-between; align-items: center; }
+        .item-carrinho { border-bottom: 1px solid #eee; padding: 10px 0; display: flex; justify-content: space-between; }
+        input#search { width: 95%; padding: 12px; margin-bottom: 20px; border-radius: 20px; border: 1px solid #ccc; }
+    </style>
+</head>
+<body>
+    <div class="produtos">
+        <input type="text" id="search" placeholder="Pesquisar produto ou código..." onkeyup="filtrar()">
+        <div id="lista-produtos">
+            {% for p in produtos %}
+            <div class="prod-card" data-nome="{{p.nome}} {{p.codigo}}">
+                <div>
+                    <b>{{ p.codigo }} - {{ p.nome }}</b> ({{p.cor}})<br>
+                    Estoque: P:{{p.p}} M:{{p.m}} G:{{p.g}} GG:{{p.gg}}
+                </div>
+                <div>
+                    R$ {{ p.preco }} 
+                    <select id="tam_{{p.id}}">
+                        {% if p.p > 0 %}<option>P</option>{% endif %}
+                        {% if p.m > 0 %}<option>M</option>{% endif %}
+                        {% if p.g > 0 %}<option>G</option>{% endif %}
+                        {% if p.gg > 0 %}<option>GG</option>{% endif %}
+                    </select>
+                    <button onclick="addCarrinho('{{p.id}}', '{{p.nome}}', '{{p.preco}}')" style="background:green; color:white; border:none; padding:5px 10px; cursor:pointer;">+</button>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="carrinho">
+        <h2>🛍️ CARRINHO</h2>
+        <div id="itens-carrinho" style="height: 300px; overflow-y: auto;"></div>
+        <hr>
+        <h3>Subtotal: R$ <span id="subtotal">0.00</span></h3>
+        <select id="metodo" style="width: 100%; padding: 10px;" onchange="atualizarTotal()">
+            <option>PIX</option><option>Dinheiro</option><option>A Prazo</option><option value="Cartão">Cartão (+14%)</option>
+        </select>
+        <h2 style="color: #c0392b;">TOTAL: R$ <span id="total-final">0.00</span></h2>
+        <button onclick="finalizar()" style="width: 100%; padding: 15px; background: #27ae60; color: white; border: none; font-size: 18px; cursor: pointer;">CONCLUIR VENDA</button>
+    </div>
+
+    <script>
+        let cart = [];
+        let subtotal = 0;
+
+        function addCarrinho(id, nome, preco) {
+            let tam = document.getElementById('tam_'+id).value;
+            fetch('/remover_estoque', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({id, tam})});
+            cart.push({id, nome, preco, tam});
+            renderCart();
+        }
+
+        function removeCarrinho(index) {
+            let item = cart[index];
+            fetch('/devolver_estoque', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({id: item.id, tam: item.tam})});
+            cart.splice(index, 1);
+            renderCart();
+        }
+
+        function renderCart() {
+            let div = document.getElementById('itens-carrinho');
+            div.innerHTML = "";
+            subtotal = 0;
+            cart.forEach((item, i) => {
+                subtotal += parseFloat(item.preco);
+                div.innerHTML += `<div class="item-carrinho"><span>${item.nome} (${item.tam})</span> <span>R$ ${item.preco} <button onclick="removeCarrinho(${i})" style="color:red; border:none; background:none; cursor:pointer;">✖</button></span></div>`;
+            });
+            document.getElementById('subtotal').innerText = subtotal.toFixed(2);
+            atualizarTotal();
+        }
+
+        function atualizarTotal() {
+            let met = document.getElementById('metodo').value;
+            let total = met === "Cartão" ? subtotal * 1.14 : subtotal;
+            document.getElementById('total-final').innerText = total.toFixed(2);
+        }
+
+        function filtrar() {
+            let input = document.getElementById('search').value.toLowerCase();
+            let cards = document.getElementsByClassName('prod-card');
+            for (let card of cards) {
+                card.style.display = card.dataset.nome.toLowerCase().includes(input) ? "flex" : "none";
+            }
+        }
+
+        function finalizar() {
+            let metodo = document.getElementById('metodo').value;
+            let total = document.getElementById('total-final').innerText;
+            fetch('/finalizar_venda', {
+                method:'POST', 
+                headers:{'Content-Type':'application/json'}, 
+                body: JSON.stringify({total, metodo, itens: cart})
+            }).then(() => { alert("Venda Concluída!"); location.reload(); });
+        }
+    </script>
+</body>
+</html>
