@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        @media print { body { width: 58mm; } }
+        body { font-family: 'Courier New', monospace; width: 58mm; font-size: 12px; }
+        .text-center { text-align: center; }
+        .divider { border-top: 1px dashed #000; margin: 5px 0; }
+    </style>
+</head>
+<body onload="window.print()">
+    <div class="text-center">
+        ** VIBE SISTEMA **<br>
+        Obrigado pela preferência!
+    </div>
+    <div class="divider"></div>
+    DATA: {{ v.data }}<br>
+    PROD: {{ v.nome }}<br>
+    TAM: {{ v.tamanho }} | QTD: {{ v.quantidade }}<br>
+    PAG: {{ v.forma_pagamento }} ({{ v.parcelas }}x)<br>
+    <div class="divider"></div>
+    TOTAL: R$ {{ "%.2f"|format(v.valor_pago) }}<br>
+    <div class="divider"></div>
+    <div class="text-center">Volte Sempre!</div>
+</body>
+</html>
