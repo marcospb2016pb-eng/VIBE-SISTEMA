@@ -12,43 +12,28 @@ def get_db_connection():
 
 def init_db():
     conn = get_db_connection()
-    # Tabela de Produtos
-    conn.execute('''
-        CREATE TABLE IF NOT EXISTS produtos (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            codigo TEXT, nome TEXT, preco REAL,
-            p INTEGER, m INTEGER, g INTEGER, gg INTEGER
-        )
-    ''')
-    # Tabela de Vendas
-    conn.execute('''
-        CREATE TABLE IF NOT EXISTS vendas (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            produto_id INTEGER,
-            tamanho TEXT,
-            quantidade INTEGER,
-            valor_total REAL,
-            data TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    ''')
+    conn.execute('''CREATE TABLE IF NOT EXISTS produtos (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        codigo TEXT, nome TEXT, preco REAL,
+        p INTEGER, m INTEGER, g INTEGER, gg INTEGER)''')
+    conn.execute('''CREATE TABLE IF NOT EXISTS vendas (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        produto_id INTEGER, tamanho TEXT, quantidade INTEGER,
+        valor_total REAL, data TIMESTAMP DEFAULT CURRENT_TIMESTAMP)''')
     conn.commit()
     conn.close()
 
 init_db()
 
 @app.route('/')
-def index():
-    return redirect(url_for('estoque'))
+def menu():
+    return render_template('menu.html')
 
 @app.route('/estoque')
 def estoque():
     conn = get_db_connection()
     produtos = conn.execute('SELECT * FROM produtos').fetchall()
-    vendas = conn.execute('''
-        SELECT v.*, p.nome FROM vendas v 
-        JOIN produtos p ON v.produto_id = p.id 
-        ORDER BY v.id DESC LIMIT 10
-    ''').fetchall()
+    vendas = conn.execute('SELECT v.*, p.nome FROM vendas v JOIN produtos p ON v.produto_id = p.id ORDER BY v.id DESC LIMIT 10').fetchall()
     conn.close()
     return render_template('estoque.html', produtos=produtos, vendas=vendas, edit_item=None)
 
@@ -56,19 +41,13 @@ def estoque():
 def cadastrar():
     f = request.form
     try:
-        preco = float(f.get('preco')) if f.get('preco') and f.get('preco').strip() else 0.0
-        p = int(f.get('P')) if f.get('P') else 0
-        m = int(f.get('M')) if f.get('M') else 0
-        g = int(f.get('G')) if f.get('G') else 0
-        gg = int(f.get('GG')) if f.get('GG') else 0
-        
+        preco = float(f.get('preco')) if f.get('preco') else 0.0
         conn = get_db_connection()
-        conn.execute('INSERT INTO produtos (codigo, nome, preco, p, m, g, gg) VALUES (?, ?, ?, ?, ?, ?, ?)',
-                     (f.get('codigo', 'S/C'), f.get('nome', 'S/N'), preco, p, m, g, gg))
+        conn.execute('INSERT INTO produtos (codigo, nome, preco, p, m, g, gg) VALUES (?,?,?,?,?,?,?)',
+                     (f.get('codigo'), f.get('nome'), preco, int(f.get('P',0)), int(f.get('M',0)), int(f.get('G',0)), int(f.get('GG',0))))
         conn.commit()
         conn.close()
-    except Exception as e:
-        print(f"Erro ao cadastrar: {e}")
+    except: pass
     return redirect(url_for('estoque'))
 
 @app.route('/pre-editar/<int:id>')
@@ -83,15 +62,12 @@ def pre_editar(id):
 @app.route('/editar/<int:id>', methods=['POST'])
 def editar(id):
     f = request.form
-    try:
-        conn = get_db_connection()
-        conn.execute('''UPDATE produtos SET codigo=?, nome=?, preco=?, p=?, m=?, g=?, gg=? WHERE id=?''',
-                     (f.get('codigo'), f.get('nome'), float(f.get('preco', 0)), 
-                      int(f.get('P', 0)), int(f.get('M', 0)), int(f.get('G', 0)), int(f.get('GG', 0)), id))
-        conn.commit()
-        conn.close()
-    except Exception as e:
-        print(f"Erro ao editar: {e}")
+    conn = get_db_connection()
+    conn.execute('UPDATE produtos SET codigo=?, nome=?, preco=?, p=?, m=?, g=?, gg=? WHERE id=?',
+                 (f.get('codigo'), f.get('nome'), float(f.get('preco', 0)), 
+                  int(f.get('P', 0)), int(f.get('M', 0)), int(f.get('G', 0)), int(f.get('GG', 0)), id))
+    conn.commit()
+    conn.close()
     return redirect(url_for('estoque'))
 
 @app.route('/vender', methods=['POST'])
@@ -99,16 +75,12 @@ def vender():
     prod_id = request.form.get('produto_id')
     tamanho = request.form.get('tamanho').lower()
     qtd = int(request.form.get('qtd', 1))
-    
     conn = get_db_connection()
-    produto = conn.execute('SELECT * FROM produtos WHERE id = ?', (prod_id,)).fetchone()
-    
-    if produto and produto[tamanho] >= qtd:
-        nova_qtd = produto[tamanho] - qtd
-        conn.execute(f'UPDATE produtos SET {tamanho} = ? WHERE id = ?', (nova_qtd, prod_id))
-        valor_venda = produto['preco'] * qtd
+    p = conn.execute('SELECT * FROM produtos WHERE id = ?', (prod_id,)).fetchone()
+    if p and p[tamanho] >= qtd:
+        conn.execute(f'UPDATE produtos SET {tamanho} = ? WHERE id = ?', (p[tamanho]-qtd, prod_id))
         conn.execute('INSERT INTO vendas (produto_id, tamanho, quantidade, valor_total) VALUES (?,?,?,?)',
-                     (prod_id, tamanho.upper(), qtd, valor_venda))
+                     (prod_id, tamanho.upper(), qtd, p['preco']*qtd))
         conn.commit()
     conn.close()
     return redirect(url_for('estoque'))
