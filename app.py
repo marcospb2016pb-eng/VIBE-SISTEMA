@@ -5,12 +5,14 @@ from flask import Flask, render_template, request, redirect, url_for, session, j
 app = Flask(__name__)
 app.secret_key = "vibe_2026_key"
 
+# Conexão robusta com o banco de dados
 def get_db_connection():
     db_path = os.path.join(os.getcwd(), 'database.db')
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
     return conn
 
+# Inicialização do Banco com todos os campos necessários
 def init_db():
     conn = get_db_connection()
     conn.execute('''CREATE TABLE IF NOT EXISTS produtos (
@@ -113,5 +115,7 @@ def deletar(id):
     conn.close()
     return redirect(url_for('estoque_aba'))
 
+# CONFIGURAÇÃO CRÍTICA PARA O RENDER
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 10000)))
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host='0.0.0.0', port=port)
