@@ -4,16 +4,23 @@
     <title>VIBE - HISTÓRICO DE VENDAS</title>
     <style>
         body { font-family: sans-serif; background: #eee; padding: 20px; }
-        .container { background: white; padding: 20px; border-radius: 8px; }
-        .busca { width: 100%; padding: 15px; margin-bottom: 20px; font-size: 16px; border-radius: 5px; border: 1px solid #ccc; }
+        .container { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .busca { width: 100%; padding: 15px; margin-bottom: 20px; font-size: 16px; border-radius: 5px; border: 1px solid #ccc; box-sizing: border-box; }
         table { width: 100%; border-collapse: collapse; }
-        th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
+        th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
+        th { background: #333; color: white; }
         tr:nth-child(even) { background: #fafafa; }
+        .btn-print { background: #2980b9; color: white; border: none; padding: 8px 12px; cursor: pointer; border-radius: 4px; font-weight: bold; }
+        .btn-print:hover { background: #1f6391; }
     </style>
 </head>
 <body>
     <div class="container">
-        <h2>📜 HISTÓRICO DE VENDAS</h2>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+            <h2>📜 HISTÓRICO DE VENDAS</h2>
+            <a href="/" style="text-decoration: none; color: #666;">⬅ Voltar ao Menu</a>
+        </div>
+        
         <input type="text" id="filtro" class="busca" placeholder="Pesquisar por produto, data ou forma de pagamento..." onkeyup="filtrarHistorico()">
         
         <table id="tabela-historico">
@@ -23,7 +30,7 @@
                     <th>Itens Vendidos</th>
                     <th>Pagamento</th>
                     <th>Valor Total</th>
-                    <th>Cupom</th>
+                    <th>Ações</th>
                 </tr>
             </thead>
             <tbody>
@@ -33,7 +40,11 @@
                     <td>{{ v.detalhes }}</td>
                     <td>{{ v.forma_pagamento }}</td>
                     <td><b>R$ {{ "%.2f"|format(v.valor_pago) }}</b></td>
-                    <td><button onclick="alert('Imprimindo via sistema térmico...')">REIMPRIMIR</button></td>
+                    <td>
+                        <button class="btn-print" onclick="reimprimir('{{ v.detalhes }}', '{{ "%.2f"|format(v.valor_pago) }}', '{{ v.forma_pagamento }}')">
+                            🖨️ REIMPRIMIR PDF
+                        </button>
+                    </td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -47,6 +58,14 @@
             rows.forEach(row => {
                 row.style.display = row.innerText.toLowerCase().includes(input) ? '' : 'none';
             });
+        }
+
+        // Função que chama a rota de cupom e abre a janela de impressão/PDF
+        function reimprimir(itens, total, metodo) {
+            const url = `/gerar_cupom_print?itens=${encodeURIComponent(itens)}&total=${total}&metodo=${metodo}`;
+            // Abre em uma nova aba para não sair da página de histórico
+            const win = window.open(url, '_blank');
+            win.focus();
         }
     </script>
 </body>
