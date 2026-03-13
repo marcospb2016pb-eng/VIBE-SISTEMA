@@ -92,15 +92,32 @@
             }
         }
 
-        function finalizar() {
-            let metodo = document.getElementById('metodo').value;
-            let total = document.getElementById('total-final').innerText;
-            fetch('/finalizar_venda', {
-                method:'POST', 
-                headers:{'Content-Type':'application/json'}, 
-                body: JSON.stringify({total, metodo, itens: cart})
-            }).then(() => { alert("Venda Concluída!"); location.reload(); });
+       function finalizar() {
+    let metodo = document.getElementById('metodo').value;
+    let total = document.getElementById('total-final').innerText;
+    let detalhes = cart.map(i => `${i.nome} (${i.tam})`).join(", ");
+
+    fetch('/finalizar_venda', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({total, metodo, detalhes})
+    }).then(response => {
+        if(response.ok) {
+            // Prepara o cupom no iframe invisível
+            const iframe = document.getElementById('frame-impressao');
+            const url = `/gerar_cupom_print?itens=${encodeURIComponent(detalhes)}&total=${total}&metodo=${metodo}`;
+            iframe.src = url;
+
+            // Quando o cupom carregar, imprime e limpa a tela
+            iframe.onload = function() {
+                iframe.contentWindow.print();
+                alert("Venda Concluída!");
+                location.reload();
+            };
         }
+    });
+}
     </script>
+    <iframe id="frame-impressao" src="/cupom_vazia" style="display:none;"></iframe>
 </body>
 </html>
