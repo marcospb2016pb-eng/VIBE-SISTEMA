@@ -9,27 +9,41 @@ app.secret_key = "vibe_2026_key"
 
 # Conexão com o Supabase (PostgreSQL) usando a variável de ambiente do Render
 def get_db_connection():
-    # O Render vai ler o link com a senha que você configurou em 'Environment'
+    # O Render vai ler o link configurado em 'Environment'
     url = os.environ.get("DATABASE_URL")
     conn = psycopg2.connect(url)
     return conn
 
-# Inicialização das tabelas no Supabase (não apagam mais)
+# Inicialização das tabelas no Supabase
 def init_db():
     conn = get_db_connection()
     cur = conn.cursor()
-    # No PostgreSQL, usamos SERIAL em vez de AUTOINCREMENT
+    
+    # Cria a tabela de produtos (Estoque)
     cur.execute('''CREATE TABLE IF NOT EXISTS produtos (
         id SERIAL PRIMARY KEY,
-        codigo TEXT, nome TEXT, cor TEXT, preco REAL,
-        p INTEGER, m INTEGER, g INTEGER, gg INTEGER)''')
+        codigo TEXT, 
+        nome TEXT, 
+        cor TEXT, 
+        preco REAL,
+        p INTEGER DEFAULT 0, 
+        m INTEGER DEFAULT 0, 
+        g INTEGER DEFAULT 0, 
+        gg INTEGER DEFAULT 0)''')
+    
+    # Cria a tabela de vendas (Histórico) - RESOLVE O ERRO 500
     cur.execute('''CREATE TABLE IF NOT EXISTS vendas (
         id SERIAL PRIMARY KEY,
-        detalhes TEXT, valor_pago REAL, forma_pagamento TEXT, data TIMESTAMP DEFAULT CURRENT_TIMESTAMP)''')
+        detalhes TEXT, 
+        valor_pago REAL, 
+        forma_pagamento TEXT, 
+        data TIMESTAMP DEFAULT CURRENT_TIMESTAMP)''')
+        
     conn.commit()
     cur.close()
     conn.close()
 
+# Executa a criação das tabelas ao iniciar
 init_db()
 
 @app.route('/')
@@ -42,6 +56,7 @@ def login():
     if request.method == 'POST':
         user = request.form.get('user')
         password = request.form.get('password')
+        # Login padrão conforme solicitado
         if (user == 'admin' and password == 'admin123') or (user == 'vendedor' and password == 'vibe123'):
             session['user'] = user
             return redirect(url_for('menu'))
@@ -67,6 +82,7 @@ def estoque_aba():
 def vendas_aba():
     conn = get_db_connection()
     cur = conn.cursor(cursor_factory=RealDictCursor)
+    # Busca produtos para a tela de PDV
     cur.execute('SELECT * FROM produtos ORDER BY nome ASC')
     produtos = cur.fetchall()
     cur.close()
@@ -77,6 +93,7 @@ def vendas_aba():
 def historico_aba():
     conn = get_db_connection()
     cur = conn.cursor(cursor_factory=RealDictCursor)
+    # Busca o histórico de vendas salvas
     cur.execute('SELECT * FROM vendas ORDER BY id DESC')
     vendas = cur.fetchall()
     cur.close()
@@ -89,7 +106,6 @@ def remover_estoque():
     coluna = data['tam'].lower()
     conn = get_db_connection()
     cur = conn.cursor()
-    # No PostgreSQL usamos %s no lugar de ?
     cur.execute(f"UPDATE produtos SET {coluna} = {coluna} - 1 WHERE id = %s", (data['id'],))
     conn.commit()
     cur.close()
