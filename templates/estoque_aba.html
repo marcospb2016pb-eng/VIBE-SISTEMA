@@ -14,7 +14,9 @@
         
         /* Estilos para os botões de ação */
         .btn-editar { color: #2980b9; text-decoration: none; font-weight: bold; margin-right: 15px; }
-        .btn-excluir { color: #c0392b; text-decoration: none; font-weight: bold; }
+        .btn-excluir { color: #c0392b; text-decoration: none; font-weight: bold; margin-right: 15px; }
+        .btn-etiqueta { color: #8e44ad; text-decoration: none; font-weight: bold; border: 1px solid #8e44ad; padding: 4px 8px; border-radius: 4px; }
+        .btn-etiqueta:hover { background: #8e44ad; color: white; }
         .btn-editar:hover, .btn-excluir:hover { text-decoration: underline; }
     </style>
 </head>
@@ -26,7 +28,7 @@
         </div>
 
         <form action="/cadastrar" method="POST">
-            <input type="text" name="codigo" placeholder="Código" required>
+            <input type="text" name="codigo" placeholder="Código (Bipe aqui)" required autofocus>
             <input type="text" name="nome" placeholder="Nome do Produto" required>
             <input type="text" name="cor" placeholder="Cor (Ex: Preta, Azul)" required>
             <input type="number" step="0.01" name="preco" placeholder="Preço R$" required>
@@ -67,6 +69,8 @@
                            onclick="return confirm('Tem certeza que deseja excluir o produto {{ p.nome }}?')">
                            🗑️ Excluir
                         </a>
+
+                        <a href="/etiqueta/{{ p.id }}" target="_blank" class="btn-etiqueta">🏷️ Etiqueta</a>
                     </td>
                 </tr>
                 {% endfor %}
