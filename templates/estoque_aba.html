@@ -1,81 +1,176 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>VIBE - GESTÃO DE ESTOQUE</title>
-    <style>
-        body { font-family: sans-serif; background: #f4f4f4; padding: 20px; }
-        .container { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-        th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
-        th { background: #333; color: white; }
-        input { padding: 8px; margin: 5px; border: 1px solid #ccc; border-radius: 4px; }
-        .btn-add { background: #27ae60; color: white; border: none; padding: 10px 20px; cursor: pointer; border-radius: 4px; font-weight: bold; }
-        .btn-add:hover { background: #219150; }
+import os
+import sqlite3
+import io
+import base64
+import barcode
+from barcode.writer import ImageWriter
+from datetime import datetime
+from flask import Flask, render_template, request, redirect, url_for, session, jsonify
+
+app = Flask(__name__)
+app.secret_key = "vibe_2026_offline_key"
+
+def get_db_connection():
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    db_path = os.path.join(base_dir, 'vibe.db')
+    conn = sqlite3.connect(db_path)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+def init_db():
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute('''CREATE TABLE IF NOT EXISTS produtos (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        codigo TEXT UNIQUE, nome TEXT, cor TEXT, preco REAL,
+        p INTEGER DEFAULT 0, m INTEGER DEFAULT 0, g INTEGER DEFAULT 0, gg INTEGER DEFAULT 0)''')
+    cur.execute('''CREATE TABLE IF NOT EXISTS vendas (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        detalhes TEXT, valor_pago REAL, forma_pagamento TEXT, 
+        data TIMESTAMP DEFAULT CURRENT_TIMESTAMP)''')
+    conn.commit()
+    conn.close()
+
+init_db()
+
+# --- ROTAS DE LOGIN ---
+@app.route('/')
+def menu():
+    if 'user' not in session: return render_template('login.html')
+    return render_template('menu.html', user=session['user'])
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        user = request.form.get('user')
+        password = request.form.get('password')
+        if (user == 'admin' and password == 'admin123') or (user == 'vendedor' and password == 'vibe123'):
+            session['user'] = user
+            return redirect(url_for('menu'))
+    return render_template('login.html')
+
+@app.route('/logout')
+def logout():
+    session.clear()
+    return redirect(url_for('login'))
+
+# --- ETIQUETAS ATUALIZADAS (COM TAMANHO) ---
+@app.route('/etiqueta/<int:id>/<tamanho>')
+def gerar_etiqueta(id, tamanho):
+    if 'user' not in session: return redirect(url_for('login'))
+    
+    conn = get_db_connection()
+    p = conn.execute('SELECT * FROM produtos WHERE id = ?', (id,)).fetchone()
+    conn.close()
+    
+    if not p:
+        return "Produto não encontrado", 404
+
+    # Configura o código de barras
+    # Usamos o ImageWriter com opções para remover textos automáticos que poluem a etiqueta pequena
+    EAN = barcode.get_barcode_class('code128')
+    codigo_barra = EAN(p['codigo'], writer=ImageWriter())
+    
+    buffer = io.BytesIO()
+    # write() aceita opções; aqui tiramos o texto de baixo do código pois já vamos colocar no HTML
+    codigo_barra.write(buffer, options={"write_text": False, "module_height": 15.0})
+    
+    imagem_base64 = base64.b64encode(buffer.getvalue()).decode('utf-8')
+    
+    return render_template('etiqueta.html', produto=p, barcode_img=imagem_base64, tamanho=tamanho)
+
+@app.route('/buscar_produto_leitor/<codigo>')
+def buscar_produto_leitor(codigo):
+    conn = get_db_connection()
+    produto = conn.execute('SELECT * FROM produtos WHERE codigo = ?', (codigo,)).fetchone()
+    conn.close()
+    if produto:
+        return jsonify(dict(produto))
+    return jsonify({"erro": "Produto não encontrado"}), 404
+
+# --- ESTOQUE E VENDAS ---
+@app.route('/finalizar_venda', methods=['POST'])
+def finalizar_venda():
+    data = request.json
+    itens = data.get('itens', [])
+    
+    conn = get_db_connection()
+    try:
+        for item in itens:
+            id_prod = item['id']
+            tamanho = item['tam'].lower()
+            qtd = item['qtd']
+            conn.execute(f"UPDATE produtos SET {tamanho} = {tamanho} - ? WHERE id = ?", (qtd, id_prod))
         
-        /* Estilos para os botões de ação */
-        .btn-editar { color: #2980b9; text-decoration: none; font-weight: bold; margin-right: 15px; }
-        .btn-excluir { color: #c0392b; text-decoration: none; font-weight: bold; margin-right: 15px; }
-        .btn-etiqueta { color: #8e44ad; text-decoration: none; font-weight: bold; border: 1px solid #8e44ad; padding: 4px 8px; border-radius: 4px; }
-        .btn-etiqueta:hover { background: #8e44ad; color: white; }
-        .btn-editar:hover, .btn-excluir:hover { text-decoration: underline; }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-            <h2>📦 CADASTRO DE PRODUTOS</h2>
-            <a href="/" style="text-decoration: none; color: #666;">⬅ Voltar ao Menu</a>
-        </div>
+        conn.execute('INSERT INTO vendas (detalhes, valor_pago, forma_pagamento) VALUES (?, ?, ?)',
+                     (data['detalhes'], data['total'], data['metodo']))
+        conn.commit()
+        return jsonify(status="ok")
+    except Exception as e:
+        conn.rollback()
+        return jsonify(status="erro", mensagem=str(e)), 500
+    finally:
+        conn.close()
 
-        <form action="/cadastrar" method="POST">
-            <input type="text" name="codigo" placeholder="Código (Bipe aqui)" required autofocus>
-            <input type="text" name="nome" placeholder="Nome do Produto" required>
-            <input type="text" name="cor" placeholder="Cor (Ex: Preta, Azul)" required>
-            <input type="number" step="0.01" name="preco" placeholder="Preço R$" required>
-            <br>
-            P: <input type="number" name="P" value="0" style="width:50px">
-            M: <input type="number" name="M" value="0" style="width:50px">
-            G: <input type="number" name="G" value="0" style="width:50px">
-            GG: <input type="number" name="GG" value="0" style="width:50px">
-            <button type="submit" class="btn-add">SALVAR NO ESTOQUE</button>
-        </form>
+# --- CADASTRO E EDIÇÃO ---
+@app.route('/cadastrar', methods=['POST'])
+def cadastrar():
+    f = request.form
+    conn = get_db_connection()
+    try:
+        conn.execute('INSERT INTO produtos (codigo, nome, cor, preco, p, m, g, gg) VALUES (?,?,?,?,?,?,?,?)',
+                    (f.get('codigo'), f.get('nome'), f.get('cor'), float(f.get('preco',0)), 
+                    int(f.get('P',0)), int(f.get('M',0)), int(f.get('G',0)), int(f.get('GG',0))))
+        conn.commit()
+    except:
+        return "Erro: Código já cadastrado!"
+    finally:
+        conn.close()
+    return redirect(url_for('estoque_aba'))
 
-        <hr>
+@app.route('/deletar/<int:id>')
+def deletar(id):
+    conn = get_db_connection()
+    conn.execute('DELETE FROM produtos WHERE id = ?', (id,))
+    conn.commit()
+    conn.close()
+    return redirect(url_for('estoque_aba'))
 
-        <h2>LISTA DE PRODUTOS</h2>
-        <table>
-            <thead>
-                <tr>
-                    <th>Cód</th>
-                    <th>Nome</th>
-                    <th>Cor</th>
-                    <th>Preço</th>
-                    <th>Estoque (P|M|G|GG)</th>
-                    <th>Ações</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for p in produtos %}
-                <tr>
-                    <td>{{ p.codigo }}</td>
-                    <td>{{ p.nome }}</td>
-                    <td>{{ p.cor }}</td>
-                    <td>R$ {{ "%.2f"|format(p.preco) }}</td>
-                    <td>{{ p.p }} | {{ p.m }} | {{ p.g }} | {{ p.gg }}</td>
-                    <td>
-                        <a href="/editar/{{ p.id }}" class="btn-editar">✏️ Editar</a>
-                        
-                        <a href="/deletar/{{ p.id }}" class="btn-excluir" 
-                           onclick="return confirm('Tem certeza que deseja excluir o produto {{ p.nome }}?')">
-                           🗑️ Excluir
-                        </a>
+@app.route('/editar/<int:id>', methods=['GET', 'POST'])
+def editar(id):
+    conn = get_db_connection()
+    if request.method == 'POST':
+        f = request.form
+        conn.execute('''UPDATE produtos SET codigo=?, nome=?, cor=?, preco=?, p=?, m=?, g=?, gg=? 
+                        WHERE id=?''',
+                     (f.get('codigo'), f.get('nome'), f.get('cor'), float(f.get('preco')), 
+                      int(f.get('P')), int(f.get('M')), int(f.get('G')), int(f.get('GG')), id))
+        conn.commit()
+        conn.close()
+        return redirect(url_for('estoque_aba'))
+    
+    produto = conn.execute('SELECT * FROM produtos WHERE id = ?', (id,)).fetchone()
+    conn.close()
+    return render_template('editar_produto.html', p=produto)
 
-                        <a href="/etiqueta/{{ p.id }}" target="_blank" class="btn-etiqueta">🏷️ Etiqueta</a>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-</body>
-</html>
+@app.route('/estoque_aba')
+def estoque_aba():
+    if session.get('user') != 'admin': return "Acesso Negado", 403
+    conn = get_db_connection()
+    produtos = conn.execute('SELECT * FROM produtos ORDER BY id DESC').fetchall()
+    conn.close()
+    return render_template('estoque_aba.html', produtos=produtos)
+
+@app.route('/vendas_aba')
+def vendas_aba():
+    return render_template('vendas_vender.html')
+
+@app.route('/historico_aba')
+def historico_aba():
+    conn = get_db_connection()
+    vendas = conn.execute('SELECT * FROM vendas ORDER BY id DESC').fetchall()
+    conn.close()
+    return render_template('historico_aba.html', vendas=vendas)
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5000, debug=True)
