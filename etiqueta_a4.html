@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Folha de Etiquetas A4 - {{ tamanho }}</title>
+    <style>
+        /* Configuração da Folha A4 */
+        @page { size: A4; margin: 10mm; }
+        body { margin: 0; padding: 0; font-family: sans-serif; background: white; }
+
+        .folha {
+            display: grid;
+            grid-template-columns: repeat(4, 40mm); /* 4 etiquetas por linha */
+            grid-gap: 4mm; /* Espaço entre elas */
+            justify-content: center;
+        }
+
+        .etiqueta {
+            width: 40mm;
+            height: 27mm;
+            border: 0.1mm solid #eee; /* Linha bem clarinha para guiar o corte */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            box-sizing: border-box;
+            padding: 1mm;
+        }
+
+        .nome { font-size: 7px; font-weight: bold; text-align: center; margin-bottom: 1mm; }
+        .barcode { width: 35mm; height: 10mm; }
+        .barcode img { width: 100%; height: 100%; object-fit: contain; }
+        
+        .rodape {
+            width: 100%;
+            display: flex;
+            justify-content: space-around;
+            margin-top: 1mm;
+        }
+        .preco { font-size: 9px; font-weight: bold; }
+        .tam { font-size: 10px; font-weight: bold; border: 1px solid black; padding: 0 2px; }
+
+        @media print {
+            .no-print { display: none; }
+        }
+    </style>
+</head>
+<body onload="window.print()">
+    <div class="folha">
+        {% for i in range(40) %}
+        <div class="etiqueta">
+            <div class="nome">{{ produto['nome'] }} - {{ produto['cor'] }}</div>
+            <div class="barcode">
+                <img src="data:image/png;base64,{{ barcode_img }}">
+            </div>
+            <div class="rodape">
+                <div class="preco">R$ {{ "%.2f"|format(produto['preco']) }}</div>
+                <div class="tam">{{ tamanho|upper }}</div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</body>
+</html>
